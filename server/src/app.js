@@ -191,11 +191,14 @@ async function createApp() {
           return callback(null, true);
         }
 
+        console.warn(`CORS blocked for origin: ${origin}. Allowed: ${allowedOrigins.join(", ")}`);
         return callback(
           new Error(`CORS blocked for origin: ${origin}`)
         );
       },
       credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
     })
   );
 
