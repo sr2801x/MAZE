@@ -1,151 +1,3 @@
-// const express = require("express");
-// const cors = require("cors");
-// const helmet = require("helmet");
-// const cookieParser = require("cookie-parser");
-// const morgan = require("morgan");
-// const passport = require("passport");
-
-// const { createRateLimiter } = require("./middleware/rateLimit");
-// const { notFoundHandler, errorHandler } = require("./middleware/error");
-// const { initPassport } = require("./config/passport");
-// const { authRoutes } = require("./routes/authRoutes");
-// const { imageRoutes } = require("./routes/imageRoutes");
-// const { paymentRoutes } = require("./routes/paymentRoutes");
-// const { userRoutes } = require("./routes/userRoutes");
-// const { stripeWebhookHandler } = require("./controllers/paymentController");
-
-// async function createApp() {
-//   const app = express();
-
-//   app.set("trust proxy", 1);
-
-//   app.use(helmet());
-//   app.use(
-//     cors({
-//       origin:
-//         (process.env.CLIENT_URL || "")
-//           .split(",")
-//           .map((s) => s.trim())
-//           .filter(Boolean)
-//           .concat(process.env.NODE_ENV !== "production" ? ["http://localhost:5173"] : []),
-//       credentials: true,
-//     })
-//   );
-
-//   // Stripe webhook must receive the raw body (must be mounted before express.json).
-//   app.post("/api/payments/webhook/stripe", express.raw({ type: "application/json" }), stripeWebhookHandler());
-
-//   app.use(express.json({ limit: "2mb" }));
-//   app.use(express.urlencoded({ extended: true }));
-//   app.use(cookieParser());
-//   app.use(morgan("dev"));
-
-//   app.use(createRateLimiter());
-
-//   initPassport(passport);
-//   app.use(passport.initialize());
-
-//   app.get("/api/health", (_req, res) => res.json({ ok: true, name: "MAZE" }));
-
-//   app.use("/api/auth", authRoutes({ passport }));
-//   app.use("/api/image", imageRoutes());
-//   app.use("/api/payments", paymentRoutes());
-//   app.use("/api/user", userRoutes());
-
-//   app.use(notFoundHandler);
-//   app.use(errorHandler);
-
-//   return app;
-// }
-
-// module.exports = { createApp };
-// const express = require("express");
-// const cors = require("cors");
-// const helmet = require("helmet");
-// const cookieParser = require("cookie-parser");
-// const morgan = require("morgan");
-// const passport = require("passport");
-
-// const { createRateLimiter } = require("./middleware/rateLimit");
-// const { notFoundHandler, errorHandler } = require("./middleware/error");
-// const { initPassport } = require("./config/passport");
-// const { authRoutes } = require("./routes/authRoutes");
-// const { imageRoutes } = require("./routes/imageRoutes");
-// const { paymentRoutes } = require("./routes/paymentRoutes");
-// const { userRoutes } = require("./routes/userRoutes");
-// const { stripeWebhookHandler } = require("./controllers/paymentController");
-
-// async function createApp() {
-//   const app = express();
-
-//   app.set("trust proxy", 1);
-
-//   app.use(helmet());
-
-//   app.use(
-//     cors({
-//       origin:
-//         (process.env.CLIENT_URL || "")
-//           .split(",")
-//           .map((s) => s.trim())
-//           .filter(Boolean)
-//           .concat(
-//             process.env.NODE_ENV !== "production"
-//               ? ["http://localhost:5173"]
-//               : []
-//           ),
-//       credentials: true,
-//     })
-//   );
-
-//   // Stripe webhook must receive raw body
-//   app.post(
-//     "/api/payments/webhook/stripe",
-//     express.raw({ type: "application/json" }),
-//     stripeWebhookHandler()
-//   );
-
-//   app.use(express.json({ limit: "2mb" }));
-//   app.use(express.urlencoded({ extended: true }));
-//   app.use(cookieParser());
-//   app.use(morgan("dev"));
-
-//   app.use(createRateLimiter());
-
-//   initPassport(passport);
-//   app.use(passport.initialize());
-
-//   // Root route
-//   app.get("/", (_req, res) => {
-//     res.json({
-//       ok: true,
-//       message: "MAZE API is running 🚀",
-//     });
-//   });
-
-//   // Health route
-//   app.get("/api/health", (_req, res) => {
-//     res.json({
-//       ok: true,
-//       name: "MAZE",
-//     });
-//   });
-
-//   // API routes
-//   app.use("/api/auth", authRoutes({ passport }));
-//   app.use("/api/image", imageRoutes());
-//   app.use("/api/payments", paymentRoutes());
-//   app.use("/api/user", userRoutes());
-
-//   // Keep these LAST
-//   app.use(notFoundHandler);
-//   app.use(errorHandler);
-
-//   return app;
-// }
-
-// module.exports = { createApp };
-
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -179,6 +31,9 @@ async function createApp() {
     allowedOrigins.push("http://localhost:5173");
   }
 
+  console.log("CORS - CLIENT_URL env var:", process.env.CLIENT_URL);
+  console.log("CORS - Allowed origins:", allowedOrigins);
+
   app.use(
     cors({
       origin: (origin, callback) => {
@@ -188,6 +43,11 @@ async function createApp() {
         }
 
         if (allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+
+        // Allow vercel.app domains in production
+        if (process.env.NODE_ENV === "production" && origin.includes("vercel.app")) {
           return callback(null, true);
         }
 
