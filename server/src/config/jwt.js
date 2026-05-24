@@ -21,7 +21,7 @@ function getJwtCookieOptions() {
     secure: isProd,
     sameSite: isProd ? "none" : "lax",
     path: "/",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: 30 * 24 * 60 * 60 * 1000, // Increased from 7 days to 30 days
   };
 }
 

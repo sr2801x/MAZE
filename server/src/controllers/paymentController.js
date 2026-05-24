@@ -65,6 +65,12 @@ function stripeWebhookHandler() {
   if (!webhookSecret) throw new Error("Missing STRIPE_WEBHOOK_SECRET");
 
   return async (req, res) => {
+    // Disable webhook in development - use dev endpoint instead
+    if (process.env.NODE_ENV !== "production") {
+      console.log("ℹ️ Webhook disabled in development mode. Use /api/payments/dev/process-pending instead.");
+      return res.json({ received: true, message: "Webhook disabled in development" });
+    }
+
     const sig = req.headers["stripe-signature"];
     let event;
     try {
@@ -117,21 +123,32 @@ const devProcessPendingTransactions = asyncHandler(async (req, res) => {
     throw new AppError("Not available in production", 403);
   }
 
-  const pendingTxns = await Transaction.find({ status: "created" }).sort({ createdAt: -1 }).limit(20);
+  // Only process the most recent transaction to prevent multiple processing
+  const pendingTxn = await Transaction.findOne({ status: "created" }).sort({ createdAt: -1 });
   let processed = 0;
 
-  for (const txn of pendingTxns) {
-    if (txn.creditsAdded > 0) {
-      const result = await User.updateOne({ _id: txn.userId }, { $inc: { credits: txn.creditsAdded } });
-      if (result.modifiedCount > 0) {
-        await Transaction.updateOne({ _id: txn._id }, { $set: { status: "paid" } });
+  if (pendingTxn && pendingTxn.creditsAdded > 0) {
+    // Double-check transaction is still "created" before processing (prevent race conditions)
+    const freshTxn = await Transaction.findById(pendingTxn._id);
+    if (!freshTxn || freshTxn.status !== "created") {
+      console.log(`⚠️ DEV: Skipping transaction ${pendingTxn._id} - already processed`);
+    } else {
+      // Use findOneAndUpdate to atomically update both user and transaction
+      const userUpdate = await User.findOneAndUpdate(
+        { _id: pendingTxn.userId },
+        { $inc: { credits: pendingTxn.creditsAdded } },
+        { new: true }
+      );
+      
+      if (userUpdate) {
+        await Transaction.updateOne({ _id: pendingTxn._id }, { $set: { status: "paid" } });
         processed++;
-        console.log(`✅ DEV: Processed ${txn.creditsAdded} credits for user ${txn.userId}`);
+        console.log(`✅ DEV: Processed ${pendingTxn.creditsAdded} credits for user ${pendingTxn.userId}. New balance: ${userUpdate.credits}`);
       }
     }
   }
 
-  res.json({ ok: true, message: `Processed ${processed} pending transactions`, count: processed });
+  res.json({ ok: true, message: `Processed ${processed} pending transaction`, count: processed });
 });
 
 module.exports = { createCheckout, stripeWebhookHandler, pricing, devProcessPendingTransactions };

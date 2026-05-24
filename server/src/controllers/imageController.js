@@ -1,5 +1,6 @@
 const { z } = require("zod");
 const mongoose = require("mongoose");
+const axios = require("axios");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { AppError } = require("../utils/appError");
 const { User } = require("../models/User");
@@ -74,5 +75,32 @@ const history = asyncHandler(async (req, res) => {
   res.json({ ok: true, credits: user?.credits ?? 0, history: user?.history ?? [] });
 });
 
-module.exports = { generate, history };
+const downloadImage = asyncHandler(async (req, res) => {
+  const { imageUrl } = req.query;
+  if (!imageUrl) throw new AppError("Image URL is required", 400);
+
+  try {
+    // Fetch the image from the URL
+    const response = await axios.get(imageUrl, {
+      responseType: 'arraybuffer',
+      timeout: 30000,
+    });
+
+    // Determine content type
+    const contentType = response.headers['content-type'] || 'image/png';
+
+    // Set headers for download
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="maze-image-${Date.now()}.png"`);
+    res.setHeader('Content-Length', response.data.length);
+
+    // Send the image data
+    res.send(response.data);
+  } catch (error) {
+    console.error('Error downloading image:', error.message);
+    throw new AppError("Failed to download image", 500);
+  }
+});
+
+module.exports = { generate, history, downloadImage };
 

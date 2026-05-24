@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, useRef } from "react";
 import toast from "react-hot-toast";
 import { api, setAuthToken } from "../lib/api";
 
@@ -8,19 +8,33 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const refreshMeRef = useRef(null);
+  const lastRefreshTime = useRef(0);
 
   const isLoggedIn = !!user;
 
   const refreshMe = useCallback(async () => {
+    // Throttle: Don't allow more than 1 request per second
+    const now = Date.now();
+    if (now - lastRefreshTime.current < 1000) {
+      return user;
+    }
+    lastRefreshTime.current = now;
+
     try {
       const res = await api.get("/auth/me");
-      setUser(res.data.user);
-      return res.data.user;
+      if (res.data.user) {
+        setUser(res.data.user);
+        return res.data.user;
+      }
+      return null;
     } catch (_e) {
-      setUser(null);
+      // Don't clear user on error, just return null
       return null;
     }
-  }, []);
+  }, [user]);
+
+  refreshMeRef.current = refreshMe;
 
   useEffect(() => {
     (async () => {

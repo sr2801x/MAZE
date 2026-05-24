@@ -15,6 +15,27 @@ export function HomePage() {
   const [busy, setBusy] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
 
+  const handleDownload = async () => {
+    if (!imageUrl) return;
+    try {
+      const response = await api.get("/image/download", {
+        params: { imageUrl },
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `maze-image-${Date.now()}.png`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success("Image downloaded");
+    } catch (error) {
+      toast.error("Failed to download image");
+    }
+  };
+
   async function onGenerate() {
     if (!isLoggedIn) {
       open();
@@ -116,15 +137,12 @@ export function HomePage() {
               <div className="flex items-center justify-between">
                 <div className="text-sm font-semibold">Generated image</div>
                 {imageUrl ? (
-                  <a
-                    href={imageUrl}
-                    download
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    onClick={handleDownload}
                     className="text-xs rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 hover:bg-white/10 transition"
                   >
                     Download
-                  </a>
+                  </button>
                 ) : null}
               </div>
 

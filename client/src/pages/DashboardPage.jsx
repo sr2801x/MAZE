@@ -20,6 +20,25 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState([]);
 
+  const handleDownload = async (imageUrl) => {
+    try {
+      const response = await api.get("/image/download", {
+        params: { imageUrl },
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `maze-image-${Date.now()}.png`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error("Failed to download image");
+    }
+  };
+
   useEffect(() => {
     (async () => {
       if (!isLoggedIn) {
@@ -96,13 +115,12 @@ export function DashboardPage() {
                     >
                       Open
                     </a>
-                    <a
-                      href={h.imageUrl}
-                      download
+                    <button
+                      onClick={() => handleDownload(h.imageUrl)}
                       className="text-xs rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 hover:bg-white/10 transition"
                     >
                       Download
-                    </a>
+                    </button>
                   </div>
                 </div>
               </div>

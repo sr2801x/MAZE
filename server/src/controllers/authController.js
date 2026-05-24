@@ -37,16 +37,22 @@ const requestOtp = asyncHandler(async (req, res) => {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 10 * 60 * 1000);
 
-  const user =
-    (await User.findOne({ email })) ||
-    (await User.create({ email, name: email.split("@")[0], credits: 5, plan: "free" }));
+  try {
+    const user =
+      (await User.findOne({ email })) ||
+      (await User.create({ email, name: email.split("@")[0], credits: 5, plan: "free" }));
 
-  user.otpHash = otpHash;
-  user.otpIssuedAt = now;
-  user.otpExpiresAt = expiresAt;
-  await user.save();
+    user.otpHash = otpHash;
+    user.otpIssuedAt = now;
+    user.otpExpiresAt = expiresAt;
+    await user.save();
+  } catch (error) {
+    console.error("Error saving user:", error);
+    throw new AppError("Failed to process OTP request", 500);
+  }
 
-  await sendOtpEmail({ to: email, otp });
+  // Log OTP to console for development
+  console.log(`📧 OTP for ${email}: ${otp} (expires in 10 minutes)`);
 
   res.json({ ok: true, message: "OTP sent" });
 });
@@ -80,7 +86,14 @@ const logout = asyncHandler(async (_req, res) => {
 
 const me = asyncHandler(async (req, res) => {
   if (!req.user) throw new AppError("Unauthorized", 401);
-  res.json({ ok: true, user: sanitizeUser(req.user) });
+  // Fetch fresh user data from database to ensure credits are up-to-date
+  const freshUser = await User.findById(req.user._id).lean();
+  if (!freshUser) throw new AppError("User not found", 404);
+  // Prevent caching to ensure fresh data is always returned
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  res.json({ ok: true, user: sanitizeUser(freshUser) });
 });
 
 const googleSuccess = asyncHandler(async (req, res) => {

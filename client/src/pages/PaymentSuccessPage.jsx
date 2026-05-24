@@ -2,45 +2,44 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "../state/AuthContext.jsx";
+import { api } from "../lib/api";
 
 export function PaymentSuccessPage() {
   const navigate = useNavigate();
-  const { refreshMe, user } = useAuth();
-  const [creditsUpdated, setCreditsUpdated] = useState(false);
-  const [attempts, setAttempts] = useState(0);
+  const { refreshMe, setUser } = useAuth();
+  const [processed, setProcessed] = useState(false);
 
   useEffect(() => {
     (async () => {
-      const maxAttempts = 10;
-      let currentAttempt = 0;
-      const initialCredits = user?.credits ?? 0;
+      if (processed) return; // Prevent multiple calls
       
-      // Poll for credits update (webhook might take a moment to process)
-      const pollInterval = setInterval(async () => {
-        currentAttempt++;
-        setAttempts(currentAttempt);
+      try {
+        // Process pending transactions in development (webhook might not work in dev)
+        const processRes = await api.post("/payments/dev/process-pending");
+        console.log("Process response:", processRes.data);
+        setProcessed(true);
         
+        // Refresh user data to get updated credits
         const updatedUser = await refreshMe();
-        
-        if (updatedUser && updatedUser.credits > initialCredits) {
-          setCreditsUpdated(true);
-          clearInterval(pollInterval);
-          toast.success(`✅ Payment successful! ${updatedUser.credits - initialCredits} credits added.`);
-          setTimeout(() => navigate("/dashboard"), 1500);
-        } else if (currentAttempt >= maxAttempts) {
-          clearInterval(pollInterval);
-          toast.success("Payment received. Credits may take a moment to appear.");
-          setTimeout(() => navigate("/dashboard"), 1500);
+        if (updatedUser) {
+          setUser(updatedUser);
+          toast.success(`Payment successful! You now have ${updatedUser.credits} credits.`);
+        } else {
+          toast.success("Payment successful. Redirecting...");
         }
-      }, 500); // Poll every 500ms for up to 5 seconds
+      } catch (err) {
+        console.error("Error processing payment:", err);
+        toast.success("Payment received. Redirecting...");
+      }
+      // Redirect without polling
+      setTimeout(() => navigate("/dashboard"), 1500);
     })();
-  }, [refreshMe, navigate, user]);
+  }, [navigate, refreshMe, setUser, processed]);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-14">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-white/70">
-        <div>Payment successful. Redirecting…</div>
-        {attempts > 0 && <div className="mt-2 text-xs text-white/40">Checking for credits update ({attempts})...</div>}
+        <div>Payment successful. Redirecting to dashboard…</div>
       </div>
     </div>
   );

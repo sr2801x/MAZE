@@ -42,7 +42,10 @@ function LoginModal() {
 
   if (!isOpen) return null;
 
-  const googleUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8080") + "/api/auth/google";
+  const handleGoogleLogin = () => {
+    const googleUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8080") + "/api/auth/google";
+    window.open(googleUrl, '_self');
+  };
 
   return (
     <div className="fixed inset-0 z-[60] grid place-items-center bg-black/60 px-4" onMouseDown={close}>
@@ -53,25 +56,25 @@ function LoginModal() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="text-lg font-black">Login to MAZE</div>
-            <div className="mt-1 text-sm text-white/60">Google OAuth or email OTP.</div>
+            <div className="mt-1 text-sm text-white/80">Google OAuth or email OTP.</div>
           </div>
-          <button className="text-white/60 hover:text-white" onClick={close}>
+          <button className="text-white/80 hover:text-white" onClick={close}>
             ✕
           </button>
         </div>
 
         <div className="mt-4">
-          <a
-            href={googleUrl}
+          <button
+            onClick={handleGoogleLogin}
             className="w-full inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold hover:bg-white/10 transition"
           >
             Continue with Google
-          </a>
+          </button>
         </div>
 
         <div className="my-4 flex items-center gap-3">
           <div className="h-px flex-1 bg-white/10" />
-          <div className="text-xs text-white/40">OR</div>
+          <div className="text-xs text-white/70">OR</div>
           <div className="h-px flex-1 bg-white/10" />
         </div>
 
@@ -134,7 +137,7 @@ function LoginModal() {
               Verify & Login
             </Button>
             <button
-              className="w-full text-xs text-white/50 hover:text-white/70"
+              className="w-full text-xs text-white/80 hover:text-white/95"
               onClick={() => {
                 setStep("email");
                 setOtp("");

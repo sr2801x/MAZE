@@ -8,4 +8,3 @@ async function connectDb(mongoUri) {
 }
 
 module.exports = { connectDb };
-
