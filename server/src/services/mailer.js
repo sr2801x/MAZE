@@ -6,32 +6,38 @@ function createTransport() {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
 
+  console.log(`🔧 SMTP Config Check - Host: ${host ? '✓' : '✗'}, Port: ${port}, User: ${user ? '✓' : '✗'}, Pass: ${pass ? '✓' : '✗'}`);
+
   if (!host || !user || !pass) {
-    return null; // Return null if SMTP not configured
+    console.log(`⚠️ SMTP not configured - missing credentials`);
+    return null;
   }
 
-  return nodemailer.createTransport({
+  const transport = nodemailer.createTransport({
     host,
     port,
     secure: port === 465,
     auth: { user, pass },
   });
+
+  console.log(`✅ SMTP transport created successfully`);
+  return transport;
 }
 
 async function sendOtpEmail({ to, otp }) {
-  // Log OTP to console for development
-  console.log(`📧 OTP for ${to}: ${otp} (expires in 10 minutes)`);
-
+  console.log(`📧 Attempting to send OTP email to ${to}`);
+  
   const transport = createTransport();
-  if (!transport) {
-    console.log("⚠️ SMTP not configured, OTP logged to console only");
-    return; // Don't throw error, just log
-  }
-
   const from = process.env.MAIL_FROM || process.env.SMTP_USER;
 
+  if (!transport) {
+    console.log(`❌ Cannot send email - SMTP not configured`);
+    return;
+  }
+
   try {
-    await transport.sendMail({
+    console.log(`📤 Sending email from ${from} to ${to}`);
+    const info = await transport.sendMail({
       from,
       to,
       subject: "Your MAZE login code",
@@ -45,11 +51,12 @@ async function sendOtpEmail({ to, otp }) {
         </div>
       `,
     });
+    console.log(`✅ OTP email sent successfully to ${to}. Message ID: ${info.messageId}`);
   } catch (error) {
-    console.error("Failed to send email:", error.message);
-    // Don't throw error, OTP is already logged to console
+    console.error(`❌ Email failed for ${to}:`, error.message);
+    console.error(`Full error details:`, error);
+    throw error;
   }
 }
 
 module.exports = { sendOtpEmail };
-

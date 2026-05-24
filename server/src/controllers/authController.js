@@ -51,8 +51,14 @@ const requestOtp = asyncHandler(async (req, res) => {
     throw new AppError("Failed to process OTP request", 500);
   }
 
-  // Log OTP to console for development
-  console.log(`📧 OTP for ${email}: ${otp} (expires in 10 minutes)`);
+  // Send OTP email
+  const { sendOtpEmail } = require("../services/mailer");
+  try {
+    await sendOtpEmail({ to: email, otp });
+  } catch (error) {
+    console.error("Failed to send OTP email:", error);
+    // Continue anyway - OTP is saved in database
+  }
 
   res.json({ ok: true, message: "OTP sent" });
 });
@@ -62,11 +68,21 @@ const verifyOtpAndLogin = asyncHandler(async (req, res) => {
   if (!parsed.success) throw new AppError("Invalid input", 400);
 
   const { email, otp } = parsed.data;
+  console.log(`🔍 Verifying OTP for ${email}: ${otp}`);
+  
   const user = await User.findOne({ email });
-  if (!user || !user.otpHash || !user.otpExpiresAt) throw new AppError("Invalid OTP", 400);
-  if (user.otpExpiresAt.getTime() < Date.now()) throw new AppError("OTP expired", 400);
+  if (!user || !user.otpHash || !user.otpExpiresAt) {
+    console.log(`❌ User not found or no OTP hash for ${email}`);
+    throw new AppError("Invalid OTP", 400);
+  }
+  
+  if (user.otpExpiresAt.getTime() < Date.now()) {
+    console.log(`❌ OTP expired for ${email}`);
+    throw new AppError("OTP expired", 400);
+  }
 
   const ok = await verifyOtp(otp, user.otpHash);
+  console.log(`🔍 OTP verification result: ${ok}`);
   if (!ok) throw new AppError("Invalid OTP", 400);
 
   user.otpHash = undefined;
