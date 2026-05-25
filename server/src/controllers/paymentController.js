@@ -134,6 +134,7 @@ const devProcessPendingTransactions = asyncHandler(async (req, res) => {
       console.log(`⚠️ DEV: Skipping transaction ${pendingTxn._id} - already processed`);
     } else {
       // Use findOneAndUpdate to atomically update both user and transaction
+      // Add a condition to only update if status is still "created" (atomic operation)
       const userUpdate = await User.findOneAndUpdate(
         { _id: pendingTxn.userId },
         { $inc: { credits: pendingTxn.creditsAdded } },
@@ -141,9 +142,20 @@ const devProcessPendingTransactions = asyncHandler(async (req, res) => {
       );
       
       if (userUpdate) {
-        await Transaction.updateOne({ _id: pendingTxn._id }, { $set: { status: "paid" } });
-        processed++;
-        console.log(`✅ DEV: Processed ${pendingTxn.creditsAdded} credits for user ${pendingTxn.userId}. New balance: ${userUpdate.credits}`);
+        // Update transaction status atomically - only if still "created"
+        const txnUpdate = await Transaction.updateOne(
+          { _id: pendingTxn._id, status: "created" },
+          { $set: { status: "paid" } }
+        );
+        
+        if (txnUpdate.modifiedCount > 0) {
+          processed++;
+          console.log(`✅ DEV: Processed ${pendingTxn.creditsAdded} credits for user ${pendingTxn.userId}. New balance: ${userUpdate.credits}`);
+        } else {
+          // Transaction was already processed by another request, rollback user credits
+          await User.updateOne({ _id: pendingTxn.userId }, { $inc: { credits: -pendingTxn.creditsAdded } });
+          console.log(`⚠️ DEV: Transaction already processed, rolled back credits`);
+        }
       }
     }
   }

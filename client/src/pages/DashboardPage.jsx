@@ -39,6 +39,51 @@ export function DashboardPage() {
     }
   };
 
+  const handleDelete = async (imageId) => {
+    if (!confirm("Are you sure you want to delete this image?")) return;
+    
+    try {
+      await api.delete(`/image/${imageId}`);
+      toast.success("Image deleted successfully");
+      // Refresh history
+      const res = await api.get("/image/history");
+      setHistory(res.data.history || []);
+    } catch (error) {
+      toast.error("Failed to delete image");
+    }
+  };
+
+  const handleEdit = async (imageId) => {
+    const editPrompt = prompt("Enter your edit instructions (e.g., 'make it blue', 'add a sunset'):");
+    if (!editPrompt) return;
+    
+    try {
+      const res = await api.post("/image/edit", { imageId, prompt: editPrompt });
+      toast.success("Image edited successfully");
+      // Refresh history
+      const historyRes = await api.get("/image/history");
+      setHistory(historyRes.data.history || []);
+      await refreshMe();
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to edit image");
+    }
+  };
+
+  const handleAnalyze = async (imageUrl) => {
+    const analyzePrompt = prompt("Enter analysis instructions (optional, leave empty for general description):");
+    
+    try {
+      const res = await api.post("/image/analyze", { 
+        imageUrl, 
+        prompt: analyzePrompt || "Describe this image in detail" 
+      });
+      alert(`Image Analysis:\n\n${res.data.analysis}`);
+      await refreshMe();
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to analyze image");
+    }
+  };
+
   useEffect(() => {
     (async () => {
       if (!isLoggedIn) {
@@ -120,6 +165,24 @@ export function DashboardPage() {
                       className="text-xs rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 hover:bg-white/10 transition"
                     >
                       Download
+                    </button>
+                    <button
+                      onClick={() => handleEdit(h.imageId)}
+                      className="text-xs rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 hover:bg-blue-500/20 transition text-blue-400"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleAnalyze(h.imageUrl)}
+                      className="text-xs rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-1.5 hover:bg-green-500/20 transition text-green-400"
+                    >
+                      Analyze
+                    </button>
+                    <button
+                      onClick={() => handleDelete(h.imageId)}
+                      className="text-xs rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 hover:bg-red-500/20 transition text-red-400"
+                    >
+                      Delete
                     </button>
                   </div>
                 </div>

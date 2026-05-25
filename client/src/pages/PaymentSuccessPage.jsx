@@ -23,7 +23,7 @@ export function PaymentSuccessPage() {
         const updatedUser = await refreshMe();
         if (updatedUser) {
           setUser(updatedUser);
-          toast.success(`Payment successful! You now have ${updatedUser.credits} credits.`);
+          toast.success(`Payment successful! Redirecting to dashboard...`);
         } else {
           toast.success("Payment successful. Redirecting...");
         }
