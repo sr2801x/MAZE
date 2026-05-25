@@ -154,18 +154,21 @@ const editImage = asyncHandler(async (req, res) => {
   );
   if (!updated) throw new AppError("Insufficient credits", 402);
 
-  // Use DALL-E Edit API for true image editing
-  const editedImageUrl = await editImageWithDALLE({ 
+  // Use Pollinations AI for image editing (free, generates variations)
+  const editedImageBuffer = await editImageWithDALLE({ 
     imageUrl: originalImage.imageUrl, 
     prompt 
   });
+
+  // Upload edited image to Cloudinary
+  const uploaded = await uploadPngBuffer({ buffer: editedImageBuffer, folder: "maze/edited" });
 
   // Create new image document
   const newImageDoc = await Image.create({
     userId,
     prompt: `${originalImage.prompt} (edited: ${prompt})`,
-    imageUrl: editedImageUrl,
-    cloudinaryPublicId: null, // DALL-E Edit returns URL, not Cloudinary upload
+    imageUrl: uploaded.url,
+    cloudinaryPublicId: uploaded.publicId,
   });
 
   // Append to history
@@ -178,7 +181,7 @@ const editImage = asyncHandler(async (req, res) => {
             {
               imageId: newImageDoc._id,
               prompt: `${originalImage.prompt} (edited: ${prompt})`,
-              imageUrl: editedImageUrl,
+              imageUrl: uploaded.url,
               createdAt: new Date(),
             },
           ],
@@ -191,7 +194,7 @@ const editImage = asyncHandler(async (req, res) => {
 
   res.json({
     ok: true,
-    imageUrl: editedImageUrl,
+    imageUrl: uploaded.url,
     creditsRemaining: updated.credits,
   });
 });

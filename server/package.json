@@ -27,6 +27,7 @@
     "nodemailer": "^6.10.1",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
+    "replicate": "^1.4.0",
     "stripe": "^18.5.0",
     "zod": "^3.25.76"
   },

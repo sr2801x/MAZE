@@ -167,7 +167,7 @@ export function HomePage() {
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-10 items-stretch">
+        <div className="grid lg:grid-cols-2 gap-10 items-start">
           {mode === "generate" ? (
             <>
               <div>

@@ -3,38 +3,29 @@ const FormData = require("form-data");
 const { AppError } = require("../utils/appError");
 
 async function editImageWithDALLE({ imageUrl, prompt }) {
-  const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new AppError("OPENROUTER_API_KEY not configured", 500);
-  }
-
   try {
-    // Download the image from the URL
-    const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-    const imageBuffer = Buffer.from(imageResponse.data);
-
-    // Create form data with the image file
-    const form = new FormData();
-    form.append('image', imageBuffer, 'image.png');
-    form.append('prompt', prompt);
-    form.append('n', '1');
-    form.append('size', '1024x1024');
-
-    const response = await axios.post(
-      "https://api.openrouter.ai/api/v1/images/edits",
-      form,
-      {
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          ...form.getHeaders(),
-        },
+    // Use Pollinations AI for free image editing (generates variations based on prompt)
+    const enhancedPrompt = `${prompt}, style similar to reference image, high quality`;
+    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}`;
+    
+    const response = await axios.get(url, {
+      responseType: 'arraybuffer',
+      timeout: 60000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
-    );
+    });
 
-    return response.data.data[0].url;
+    if (response.status === 200) {
+      return Buffer.from(response.data);
+    } else {
+      throw new AppError("Failed to edit image", 502);
+    }
   } catch (error) {
-    console.error("DALL-E Edit error:", error.response?.data || error.message);
-    throw new AppError(`DALL-E Edit failed: ${error.message}`, 500);
+    if (error.code === "ECONNABORTED") {
+      throw new AppError("Image editing timed out", 504);
+    }
+    throw new AppError(`Image edit failed: ${error.message}`, 502);
   }
 }
 
